@@ -4,15 +4,18 @@ import pandas as pd
 import altair as alt
 from datetime import datetime, timedelta
 
-# Page title
-st.set_page_config(page_title='Support Ticket Workflow', page_icon='🎫')
-st.title('🎫 Support Ticket Workflow')
-st.info('To write a ticket, fill out the form below. Check status or review ticketing analytics using the tabs below.')
+# PAGE TITLE
+st.set_page_config(page_title='Powder X-ray Diffraction Data Processing', page_icon='💎')
+st.title('💎Support Ticket Workflow')
+st.info('This app is designed to perform peak fitting of powder X-ray diffraction data. Please upload one (1) csv containing two (2) columns (2theta, intensity) of data separated by tabs.')
 
 
-# Generate data
-## Set seed for reproducibility
-np.random.seed(42)
+# GENERATE DATA
+## Loading CSV
+spectra = st.file_uploader("upload file", type={'csv'})
+if spectra is not None:
+    data_df = pd.read_csv(spectra, names=['2theta', 'intensity'])
+st.write(data)
 
 ## Function to generate a random issue description
 def generate_issue():
