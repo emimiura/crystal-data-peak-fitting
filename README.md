@@ -4,4 +4,4 @@ An app designed to perform peak fitting and analysis of powder X-ray diffraction
 
 ## Demo App
 
-[![Streamlit App](https://crystal.streamlit.app/)]
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://crystal.streamlit.app/)
