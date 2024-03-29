@@ -91,7 +91,11 @@ with st.sidebar.expander('**Process the dataset**', expanded=True):
             pass
     else:
         data_process_c.write('Data processing choice: `Truncate`')
-        st.info('\n - This choice will crop data to a defined Lower Bound and Upper Bound. \n - Lower Bound **MUST** be a lower 2theta value than Upper Bound. \n - Truncated data is easier to baseline when the upper and lower bound terminate at the background intensity.')
+        st.info('''
+                \n - This choice will crop data to a defined Lower Bound and Upper Bound. 
+                \n - Lower Bound **MUST** be a lower 2theta value than Upper Bound. 
+                \n - Truncated data is easier to baseline when the upper and lower bound terminate at the background intensity.
+                ''')
         
         if spectra is not None:
             data_length = len(data_df)-1
@@ -101,23 +105,24 @@ with st.sidebar.expander('**Process the dataset**', expanded=True):
         st.markdown('Chose a 2θ range to cut raw data:')
         if spectra is not None:
             lower_cut = st.number_input(label='Lower Bound (2θ)', 
-                                        min_value=data_df['2theta'][0], 
-                                        max_value=data_df['2theta'][data_length],
+                                        min_value=np.round(data_df['2theta'][0], decimals=2),
+                                        max_value=np.round(data_df['2theta'][data_length], decimals=2),
                                         step=0.01,
-                                        value=data_df['2theta'][0],
+                                        value=np.round(data_df['2theta'][0], decimals=2),
                                         on_change=set_state,
                                         args=[0])
             upper_cut = st.number_input(label='Upper Bound (2θ)', 
-                                        min_value=data_df['2theta'][0], 
-                                        max_value=data_df['2theta'][data_length],
+                                        min_value=np.round(data_df['2theta'][0], decimals=2), 
+                                        max_value=np.round(data_df['2theta'][data_length], decimals=2),
                                         step=0.01,
-                                        value=data_df['2theta'][0],
+                                        value=np.round(data_df['2theta'][0], decimals=2),
                                         on_change=set_state,
                                         args=[0])
 
             trunc_data = data_df.drop(data_df.loc[(data_df['2theta']<lower_cut) | (data_df['2theta']>upper_cut)].index)
             # data_process_c.markdown('Truncated data:')
             # data_process_c.line_chart(data=trunc_data, x='2theta', y='intensity')
+            # data_process_c.write(trunc_data)
             data = trunc_data
         else:
             pass
@@ -228,7 +233,7 @@ with st.sidebar.expander('**Select peaks for scherrer analysis**', expanded=True
     scherrer_peaks = []
     for i in range(peak_num):
         x = st.checkbox(label=f'Peak {i+1}: (p{i+1}_)',
-                                value=False)
+                                value=True)
         scherrer_peaks.append(x)
 # print(scherrer_peaks)
 
@@ -313,9 +318,9 @@ if st.session_state.stage >= 1:
             for i in np.arange(0,len(prefs)):
                 center = result.params[f'{prefs[i]}center'].value
                 # print(center) #testing
-                result_centers.append(center)
+                result_centers.append(np.round(center, decimals=5))
                 fwhm = result.params[f'{prefs[i]}fwhm'].value
-                result_fwhms.append(fwhm)
+                result_fwhms.append(np.round(fwhm, decimals=5))
                 # print(fwhm) #testing
 
             peak_results['peak'] = pd.Series(prefs)
@@ -436,7 +441,7 @@ def get_diameter(df, k, l, scherrer_peaks):
     averages = []
     diameters = []
     for m, n in zip(cos_theta_values, fwhm_values_radians):
-        g = (k*l)/(m*n)
+        g = np.round((k*l)/(m*n), decimals=5)
         diameters.append(g)
 
         if np.isnan(g):
