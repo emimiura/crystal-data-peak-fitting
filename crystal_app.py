@@ -16,7 +16,8 @@ st.set_page_config(
     initial_sidebar_state='expanded')
 st.title('💎 Crystal: A Powder X-ray Diffraction Data Processing App')
 st.info('''
-		**This app is designed to perform peak fitting and analysis of powder X-ray diffraction (PXRD) data of nanocrystalline materials.**
+		**This app is designed to perform a quick and basic peak fitting and analysis of powder X-ray diffraction (PXRD) data of nanocrystalline materials.**
+        \n*Disclaimer: The results derived from this app should not be interpreted as journal publication quality fittings and sizing results but rather as a quick and convenient method to determine peak positions, FWHMs, and approximate crystalline domain size when processing data.*
 		''')
 with st.expander('**How to use this app:**', expanded=True):
     st.info('''
@@ -377,7 +378,7 @@ scherrer_c.subheader('STEP 4: SCHERRER ANALYSIS')
 with scherrer_c.expander('What is Scherrer analysis?', expanded=True):
     st.info('''
             \n - [The Scherrer Equation](https://en.wikipedia.org/wiki/Scherrer_equation) is used in conjunction with fitted peak positions and full width half maximum (FWHM) values to determine the approximate nanocrystalline domain size from X-ray diffraction spectra.
-            \n - Bulk materials can also be analyzed for peak fitting, but the Scherrer Equation (diameter sizing equation) is not accurate for materials that are above ~50 nm in crystalline domain size.
+            \n - Bulk materials can also be analyzed for peak fitting, but [the Scherrer Equation is not accurate for materials that are above ~100-200 nm in crystalline domain size](https://doi.org/10.1038/nnano.2011.145).
             ''')
 
 col1, col2 = scherrer_c.columns(2)
