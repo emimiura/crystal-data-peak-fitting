@@ -1,8 +1,7 @@
-# 🎫 Support Ticket Workflow
+# 💎 Crystal: A Powder X-ray Diffraction Data Processing App
 
-A **Support Ticket Workflow** demo that allow users to write a ticket as well as check up on the status or review ticketing analytics.
+An app designed to perform peak fitting and analysis of powder X-ray diffraction (PXRD) data of nanocrystalline materials.
 
 ## Demo App
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://support-ticket-workflow-tempalte.streamlit.app/)
-
+[![Streamlit App]([https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://support-ticket-workflow-tempalte.streamlit.app](https://crystal.streamlit.app/))
