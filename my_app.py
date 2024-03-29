@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import altair as alt
 import time
-from streamlit import streamlit_js_eval
+from streamlit_js_eval import streamlit_js_eval
 from datetime import datetime, timedelta
 from lmfit import CompositeModel, Model
 from lmfit.models import LinearModel, ExponentialModel, PseudoVoigtModel, GaussianModel, LorentzianModel
