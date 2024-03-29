@@ -3,8 +3,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import altair as alt
-from time import sleep
-from stqdm import stqdm
 from datetime import datetime, timedelta
 from lmfit import CompositeModel, Model
 from lmfit.models import LinearModel, ExponentialModel, PseudoVoigtModel, GaussianModel, LorentzianModel
@@ -78,25 +76,36 @@ else:
     data_process_c.write('You chose to truncate the raw data before peak fitting.')
 
     st.sidebar.markdown('Chose a 2theta range to cut raw data:')
-    st.sidebar.info('This choice will crop data to remove data below the lower bound and data above the upper bound. Lower Bound **MUST** be a lower 2theta value than Upper Bound. Truncated data is easier to baseline when the upper and lower bound terminate at the background intensity.')
-    data_length = len(data_df)-1
+    st.sidebar.info('\n - This choice will crop data to a defined Lower Bound and Upper Bound. \n - Lower Bound **MUST** be a lower 2theta value than Upper Bound. \n - Truncated data is easier to baseline when the upper and lower bound terminate at the background intensity.')
+    
+    if spectra is not None:
+        data_length = len(data_df)-1
+    else:
+        pass
 
-    cola, colb = st.columns(2)
-    with cola:
-        lower_cut = st.sidebar.number_input(label='Lower Bound, 2theta', 
-                                    min_value=data_df['2theta'][0], 
-                                    max_value=data_df['2theta'][data_length],
-                                    step=0.01)
-    with colb:
-        upper_cut = st.sidebar.number_input(label='Upper Bound, 2theta', 
-                                    min_value=data_df['2theta'][0], 
-                                    max_value=data_df['2theta'][data_length],
-                                    step=0.01)
+    if spectra is not None:
+        col1, col2 = st.columns(2)
+        with col1:
+            lower_cut = st.sidebar.number_input(label='Lower Bound, 2theta', 
+                                        min_value=data_df['2theta'][0], 
+                                        max_value=data_df['2theta'][data_length],
+                                        step=0.01,
+                                        on_change=set_state,
+                                        args=[0])
+        with col2:
+            upper_cut = st.sidebar.number_input(label='Upper Bound, 2theta', 
+                                        min_value=data_df['2theta'][0], 
+                                        max_value=data_df['2theta'][data_length],
+                                        step=0.01,
+                                        on_change=set_state,
+                                        args=[0])
 
-    trunc_data = data_df.drop(data_df.loc[(data_df['2theta']<lower_cut) | (data_df['2theta']>upper_cut)].index)
-    data_process_c.markdown('Truncated data:')
-    data_process_c.line_chart(data=trunc_data, x='2theta', y='intensity')
-    data = trunc_data
+        trunc_data = data_df.drop(data_df.loc[(data_df['2theta']<lower_cut) | (data_df['2theta']>upper_cut)].index)
+        data_process_c.markdown('Truncated data:')
+        data_process_c.line_chart(data=trunc_data, x='2theta', y='intensity')
+        data = trunc_data
+    else:
+        pass
 
 
 ## confirmation of data post-processing
@@ -113,7 +122,7 @@ fitting_data_c = st.container(border=False)
 fitting_data_c.subheader('FITTING DATA')
 st.sidebar.subheader('FITTING DATA')
 ## identify number of peaks
-st.sidebar.info("Chose the number of peaks you'd like to fit and the initial guesses for peak positions as integer values.")
+st.sidebar.info("1. Chose the number of peaks you'd like to fit. \n 2. initial guesses for peak positions as integer values.")
 peak_num = st.sidebar.slider(label='How many peaks would you like to fit?',
                      min_value=1,
                      max_value=6,
@@ -132,7 +141,7 @@ for i in range(peak_num):
                                 args=[0])
     parameters.append(x)
 
-fitting_data_c.info('Suggestions on chosing a model to fit your data:\n 1. Pseudo-Voigt models are used for traditional looking XRD data. \n 2. Play around with mixing and matching the peak fitting model and baseline fitting model to maximize the R$$^2$$.')
+fitting_data_c.info('Suggestions on chosing and improving a model to fit your data:\n 1. Pseudo-Voigt models are used for traditional looking XRD data. \n 2. Play around with mixing and matching the peak fitting model and baseline fitting model to maximize the R$$^2$$. \n 3. Use the truncate data option to set with the bounds of your dataset for a better baseline fitting.')
 
 col1, col2 = fitting_data_c.columns(2)
 with col1:
@@ -179,18 +188,27 @@ with col2:
 if st.session_state.stage == 0:
     fitting_data_c.button('DO THE FIT!', on_click=set_state, args=[1])
 
+# sidebar
+st.sidebar.subheader('SCHERRER ANALYSIS')
+st.sidebar.info('\n - This is for sizing of peaks. \n - Select which peaks you want to perform size analysis on.')
+
+scherrer_peaks = []
+for i in range(peak_num):
+    x = st.sidebar.checkbox(label=f'Peak {i+1}: (p{i+1}_)',
+                            value=False)
+    scherrer_peaks.append(x)
+# print(scherrer_peaks)
 
 if st.session_state.stage >= 1:
     reset_button = fitting_data_c.button('RESET', on_click=set_state, args=[0])
 
-    for i in stqdm(range(100), desc='Loading your model...', backend=False, frontend=True):
-        sleep(0.05)
-
-    ##### BUILDING THE MODEL #####
+##### BUILDING THE MODEL #####
+    @st.cache_data
     def build_model(num, model):
-        pref = 'p{0}_'.format(num)
+        pref = 'p{}_'.format(num+1)
         model = model(prefix = pref)
         model.set_param_hint(pref+'center', value=parameters[num])
+        # print(pref) # testing
         return model
 
     mod = None
@@ -201,9 +219,8 @@ if st.session_state.stage >= 1:
         else:
             mod = mod + add_mod
 
-    ##### FITTING THE MODEL #####
+##### FITTING THE MODEL #####
     mod = mod + bkg
-
     result = mod.fit(data=data['intensity'].values, 
                 x=data['2theta'].values, 
                 method='leastsq')
@@ -215,7 +232,6 @@ if st.session_state.stage >= 1:
     r_sq = 1 - result.residual.var() / np.var(data['intensity'].values)
 
     ##### PLOTTING THE RESULT #####
-
     def plot_model(data, result, comps, dely):
         # resetting truncated data index
         data.reset_index(drop=True, inplace=True)
@@ -230,7 +246,7 @@ if st.session_state.stage >= 1:
         
         prefs = ['intensity', 'best_fit', bkg_pref]
         for i in range(len(parameters)):
-            pref = 'p{0}_'.format(i)
+            pref = 'p{}_'.format(i+1)
             prefs.append(pref)
         
         fitting_data_c.markdown('Fitted data set plot:')
@@ -248,66 +264,162 @@ if st.session_state.stage >= 1:
 
     # plotting data with raw data, best fit, individual components, and background fit
     total_data = plot_model(data, result, comps, dely)
+
+    ## EXTRACTING FIT RESULTS ##
+
+    if result is not None:
+        @st.cache_data
+        def extract_results(_result):
+            result_centers = []
+            result_fwhms = []
+            peak_results = pd.DataFrame()
+
+            prefs = []
+            for i in np.arange(0,len(parameters)):
+                pref = 'p{}_'.format(i+1)
+                prefs.append(pref)
+
+            for i in np.arange(0,len(prefs)):
+                center = result.params[f'{prefs[i]}center'].value
+                # print(center) #testing
+                result_centers.append(center)
+                fwhm = result.params[f'{prefs[i]}fwhm'].value
+                result_fwhms.append(fwhm)
+                # print(fwhm) #testing
+
+            peak_results['peak'] = pd.Series(prefs)
+            peak_results['peak_position'] = pd.Series(result_centers)
+            peak_results['fwhm'] = pd.Series(result_fwhms)
+            peak_results_t = peak_results.transpose()
+
+            return peak_results_t
+
+        peak_results_t = extract_results(result)
+    else:
+        pass
+
+    # downloading data
+
+    if total_data is not None:
+        @st.cache_data
+        def convert_df_to_csv(total_data):
+            return total_data.to_csv().encode('utf-8')
+        result_csv = convert_df_to_csv(total_data)
+        peak_result_csv = convert_df_to_csv(peak_results_t)
+
+            # Fit report
+        fit_report_c = st.container(border=False)
+        fit_report_c.subheader('FIT RESULTS')
+        with fit_report_c.container(border=True):
+            st.download_button(label='DOWNLOAD FIT RESULTS (.CSV)',
+                            data=peak_result_csv,
+                            file_name='CrystDataPeakFitApp_FitResults.csv',
+                            mime='text/csv')
+            st.markdown(f'R$$^2$$: `{r_sq:.5f}`', unsafe_allow_html=True)
+            st.write(peak_results_t)
+        with fit_report_c.expander('**Fitted Dataset**'):
+            st.download_button(label='DOWNLOAD DATASET (.CSV)',
+                                    data=result_csv,
+                                    file_name='CrystDataPeakFitApp_FittedData.csv',
+                                    mime='text/csv')
+            st.write(total_data)
+        with fit_report_c.expander('**Full Fit Report**'):
+            st.code(result.fit_report(min_correl=0.9))
+
+    else:
+        pass
+
+##### SCHERRER ANALYSIS #####
+
+    scherrer_c = st.container(border=False)
+    scherrer_c.subheader('SCHERRER ANALYSIS')
+
+    col1, col2 = st.columns(2)
+    with col1:
+        k = st.number_input(label='K constant',
+                        value=0.9,
+                        min_value=0.5,
+                        max_value=2.5,
+                        step=0.01,
+                        help='default: 0.9')
+    with col2:
+        l = st.number_input(label='Copper K-α (Å)',
+                        value=1.5406,
+                        min_value=0.0000,
+                        max_value=2.0000,
+                        step=0.0001,
+                        help='default: 1.5406')
+
+    # defining scherrer functions
+    def get_diameter(df, k, l, scherrer_peaks):
+        # initializing results dataframe
+        scherrer_results = pd.DataFrame()
+        # converting anstroms to nanometers
+        k = k/10
+
+        #transposing data for for loop ease
+        df = df.transpose()
+
+        two_thetas = []
+        for i in range(len(df)):
+            if scherrer_peaks[i] == True:
+                t = df.iloc[i, df.columns.get_loc('peak_position')]
+                two_thetas.append(t)
+            else:
+                t = float('NaN')
+                two_thetas.append(t)
+
+        fwhms = []
+        for i in range(len(df)):
+            if scherrer_peaks[i] == True:
+                t = df.iloc[i, df.columns.get_loc('fwhm')]
+                fwhms.append(t)
+            else:
+                t = float('NaN')
+                fwhms.append(t)
+
+        # print(two_thetas)
+        # print(fwhms)
+
+        cos_theta_values = []
+        for i in np.arange(len(two_thetas)):
+            c = two_thetas[i] / 2
+            d = np.cos(np.radians(c))
+            cos_theta_values.append(d)
+
+        fwhm_values_radians = []
+        for j in np.arange(len(fwhms)):
+            f = np.radians(fwhms[j])
+            fwhm_values_radians.append(f)
+
+        averages = []
+        diameters = []
+        for m, n in zip(cos_theta_values, fwhm_values_radians):
+            g = (k*l)/(m*n)
+            diameters.append(g)
+
+            if np.isnan(g):
+                pass
+            else:
+                averages.append(g)
+        print(averages)
+    
+        scherrer_results['diameters_nm'] = pd.Series(diameters)
+        scherrer_results_t = scherrer_results.transpose()
+        return scherrer_results_t, averages
+
+    # running for determining scherrer
+    scherrer_results_t, averages = get_diameter(peak_results_t, k, l, scherrer_peaks)
+    #concatenating peak results with scherrer results
+    peak_results_t = pd.concat([peak_results_t, scherrer_results_t])
+    average_size = np.average(averages)
+    stdev_size = np.std(averages)
+
+    st.write(peak_results_t)
+    st.markdown(f'Average size: `{average_size:.2f} ± {stdev_size:.2f} nm`')
+
 else:
     result = None
     total_data = None
 
-## EXTRACTING FIT RESULTS ##
-if result is not None:
-    def extract_results(result):
-        result_centers = []
-        result_fwhms = []
-        peak_results = pd.DataFrame()
-
-        prefs = []
-        for i in range(len(parameters)):
-            pref = 'p{0}_'.format(i)
-            prefs.append(pref)
-
-        for i in range(0,len(prefs)):
-            center = result.params[f'{prefs[i]}center'].value
-            # print(center) #testing
-            result_centers.append(center)
-            fwhm = result.params[f'{prefs[i]}fwhm'].value
-            result_fwhms.append(fwhm)
-            # print(fwhm) #testing
-
-        peak_results['peak_centers (2theta)'] = pd.Series(result_centers)
-        peak_results['fwhms'] = pd.Series(result_fwhms)
-
-        return peak_results
-
-    peak_results = extract_results(result)
-else:
-    pass
-
-# downloading data
-
-if total_data is not None:
-    @st.cache_data
-    def convert_df_to_csv(total_data):
-        return total_data.to_csv().encode('utf-8')
-    result_csv = convert_df_to_csv(total_data)
-    peak_result_csv = convert_df_to_csv(peak_results)
-
-        # Fit report
-    fit_report_c = st.container(border=False)
-    fit_report_c.subheader('FIT RESULTS')
-    with fit_report_c.expander('**Fit Results**'):
-        st.download_button(label='DOWNLOAD FIT RESULTS (.CSV)',
-                        data=peak_result_csv,
-                        file_name='CrystDataPeakFitApp_FitResults.csv',
-                        mime='text/csv')
-        st.markdown(f'R$$^2$$: `{r_sq:.5f}`', unsafe_allow_html=True)
-        st.write(peak_results)
-    with fit_report_c.expander('**Fitted Dataset**'):
-        st.download_button(label='DOWNLOAD DATASET (.CSV)',
-                                data=result_csv,
-                                file_name='CrystDataPeakFitApp_FittedData.csv',
-                                mime='text/csv')
-        st.write(total_data)
-    with fit_report_c.expander('**Full Fit Report**'):
-        st.code(result.fit_report(min_correl=0.9))
-else:
-    pass
-
+# last sidebar stuff!
